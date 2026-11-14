@@ -1,0 +1,20 @@
+# Build output
+/bin/
+/dist/
+*.exe
+
+# Test output
+coverage.out
+coverage.html
+test-report.json
+*.test
+
+# Local secrets — never commit real .env files
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
