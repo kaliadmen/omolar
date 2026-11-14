@@ -1,0 +1,23 @@
+{"Time":"2026-11-14T20:31:25.38671964Z","Action":"start","Package":"fx/panicky"}
+{"Time":"2026-11-14T20:31:25.388682275Z","Action":"run","Package":"fx/panicky","Test":"TestBoom"}
+{"Time":"2026-11-14T20:31:25.388727649Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"=== RUN   TestBoom\n"}
+{"Time":"2026-11-14T20:31:25.388800636Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"--- FAIL: TestBoom (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.390974206Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"panic: assignment to entry in nil map [recovered]\n"}
+{"Time":"2026-11-14T20:31:25.390987105Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\tpanic: assignment to entry in nil map\n"}
+{"Time":"2026-11-14T20:31:25.390989771Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\n"}
+{"Time":"2026-11-14T20:31:25.390992024Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"goroutine 6 [running]:\n"}
+{"Time":"2026-11-14T20:31:25.390994319Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"testing.tRunner.func1.2({0x54fea0, 0x6a06e0})\n"}
+{"Time":"2026-11-14T20:31:25.390996589Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\t/usr/local/go1.24.7/src/testing/testing.go:1734 +0x21c\n"}
+{"Time":"2026-11-14T20:31:25.391001066Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"testing.tRunner.func1()\n"}
+{"Time":"2026-11-14T20:31:25.391002773Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\t/usr/local/go1.24.7/src/testing/testing.go:1737 +0x35e\n"}
+{"Time":"2026-11-14T20:31:25.39100429Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"panic({0x54fea0?, 0x6a06e0?})\n"}
+{"Time":"2026-11-14T20:31:25.391005969Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\t/usr/local/go1.24.7/src/runtime/panic.go:792 +0x132\n"}
+{"Time":"2026-11-14T20:31:25.391010635Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"fx/panicky.TestBoom(0xc000003880?)\n"}
+{"Time":"2026-11-14T20:31:25.391012129Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\t/tmp/fx/panicky/p_test.go:3 +0x28\n"}
+{"Time":"2026-11-14T20:31:25.391015662Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"testing.tRunner(0xc000003880, 0x584370)\n"}
+{"Time":"2026-11-14T20:31:25.391017408Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\t/usr/local/go1.24.7/src/testing/testing.go:1792 +0xf4\n"}
+{"Time":"2026-11-14T20:31:25.391019395Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"created by testing.(*T).Run in goroutine 1\n"}
+{"Time":"2026-11-14T20:31:25.391020957Z","Action":"output","Package":"fx/panicky","Test":"TestBoom","Output":"\t/usr/local/go1.24.7/src/testing/testing.go:1851 +0x413\n"}
+{"Time":"2026-11-14T20:31:25.39137369Z","Action":"fail","Package":"fx/panicky","Test":"TestBoom","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.39138048Z","Action":"output","Package":"fx/panicky","Output":"FAIL\tfx/panicky\t0.004s\n"}
+{"Time":"2026-11-14T20:31:25.391386351Z","Action":"fail","Package":"fx/panicky","Elapsed":0.005}

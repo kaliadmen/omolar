@@ -1,0 +1,49 @@
+{"ImportPath":"fx/broken [fx/broken.test]","Action":"build-output","Output":"# fx/broken [fx/broken.test]\n"}
+{"ImportPath":"fx/broken [fx/broken.test]","Action":"build-output","Output":"broken/x.go:2:174: cannot use \"nope\" (untyped string constant) as int value in return statement\n"}
+{"ImportPath":"fx/broken [fx/broken.test]","Action":"build-fail"}
+{"Time":"2026-11-14T20:31:25.166921329Z","Action":"start","Package":"fx/bad"}
+{"Time":"2026-11-14T20:31:25.167080877Z","Action":"start","Package":"fx/broken"}
+{"Time":"2026-11-14T20:31:25.167127689Z","Action":"output","Package":"fx/broken","Output":"FAIL\tfx/broken [build failed]\n"}
+{"Time":"2026-11-14T20:31:25.16716813Z","Action":"fail","Package":"fx/broken","Elapsed":0,"FailedBuild":"fx/broken [fx/broken.test]"}
+{"Time":"2026-11-14T20:31:25.169556696Z","Action":"run","Package":"fx/bad","Test":"TestDiv"}
+{"Time":"2026-11-14T20:31:25.169570171Z","Action":"output","Package":"fx/bad","Test":"TestDiv","Output":"=== RUN   TestDiv\n"}
+{"Time":"2026-11-14T20:31:25.169590782Z","Action":"run","Package":"fx/bad","Test":"TestDiv/zero"}
+{"Time":"2026-11-14T20:31:25.169592607Z","Action":"output","Package":"fx/bad","Test":"TestDiv/zero","Output":"=== RUN   TestDiv/zero\n"}
+{"Time":"2026-11-14T20:31:25.169596879Z","Action":"output","Package":"fx/bad","Test":"TestDiv/zero","Output":"    b_test.go:3: want 0, got 5\n"}
+{"Time":"2026-11-14T20:31:25.169601596Z","Action":"output","Package":"fx/bad","Test":"TestDiv/zero","Output":"--- FAIL: TestDiv/zero (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.169604026Z","Action":"fail","Package":"fx/bad","Test":"TestDiv/zero","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.169607196Z","Action":"output","Package":"fx/bad","Test":"TestDiv","Output":"--- FAIL: TestDiv (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.169609254Z","Action":"fail","Package":"fx/bad","Test":"TestDiv","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.169610796Z","Action":"output","Package":"fx/bad","Output":"FAIL\n"}
+{"Time":"2026-11-14T20:31:25.169612928Z","Action":"output","Package":"fx/bad","Output":"coverage: 0.0% of statements\n"}
+{"Time":"2026-11-14T20:31:25.169862242Z","Action":"output","Package":"fx/bad","Output":"FAIL\tfx/bad\t0.002s\n"}
+{"Time":"2026-11-14T20:31:25.169872604Z","Action":"fail","Package":"fx/bad","Elapsed":0.003}
+{"Time":"2026-11-14T20:31:25.17202311Z","Action":"start","Package":"fx/empty"}
+{"Time":"2026-11-14T20:31:25.172122993Z","Action":"output","Package":"fx/empty","Output":"?   \tfx/empty\t[no test files]\n"}
+{"Time":"2026-11-14T20:31:25.172128145Z","Action":"skip","Package":"fx/empty","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.178622489Z","Action":"start","Package":"fx/good"}
+{"Time":"2026-11-14T20:31:25.178635767Z","Action":"run","Package":"fx/good","Test":"TestAdd"}
+{"Time":"2026-11-14T20:31:25.17863797Z","Action":"output","Package":"fx/good","Test":"TestAdd","Output":"=== RUN   TestAdd\n"}
+{"Time":"2026-11-14T20:31:25.178642332Z","Action":"output","Package":"fx/good","Test":"TestAdd","Output":"--- PASS: TestAdd (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.178644611Z","Action":"pass","Package":"fx/good","Test":"TestAdd","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.178647809Z","Action":"run","Package":"fx/good","Test":"TestSkip"}
+{"Time":"2026-11-14T20:31:25.178650134Z","Action":"output","Package":"fx/good","Test":"TestSkip","Output":"=== RUN   TestSkip\n"}
+{"Time":"2026-11-14T20:31:25.178651638Z","Action":"output","Package":"fx/good","Test":"TestSkip","Output":"    g_test.go:4: not today\n"}
+{"Time":"2026-11-14T20:31:25.178653707Z","Action":"output","Package":"fx/good","Test":"TestSkip","Output":"--- SKIP: TestSkip (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.178655166Z","Action":"skip","Package":"fx/good","Test":"TestSkip","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.17865698Z","Action":"run","Package":"fx/good","Test":"TestTable"}
+{"Time":"2026-11-14T20:31:25.178658457Z","Action":"output","Package":"fx/good","Test":"TestTable","Output":"=== RUN   TestTable\n"}
+{"Time":"2026-11-14T20:31:25.178660415Z","Action":"run","Package":"fx/good","Test":"TestTable/one"}
+{"Time":"2026-11-14T20:31:25.178661732Z","Action":"output","Package":"fx/good","Test":"TestTable/one","Output":"=== RUN   TestTable/one\n"}
+{"Time":"2026-11-14T20:31:25.178670163Z","Action":"output","Package":"fx/good","Test":"TestTable/one","Output":"--- PASS: TestTable/one (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.178672146Z","Action":"pass","Package":"fx/good","Test":"TestTable/one","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.178674132Z","Action":"run","Package":"fx/good","Test":"TestTable/two"}
+{"Time":"2026-11-14T20:31:25.178675396Z","Action":"output","Package":"fx/good","Test":"TestTable/two","Output":"=== RUN   TestTable/two\n"}
+{"Time":"2026-11-14T20:31:25.178676967Z","Action":"output","Package":"fx/good","Test":"TestTable/two","Output":"--- PASS: TestTable/two (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.178678386Z","Action":"pass","Package":"fx/good","Test":"TestTable/two","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.178679962Z","Action":"output","Package":"fx/good","Test":"TestTable","Output":"--- PASS: TestTable (0.00s)\n"}
+{"Time":"2026-11-14T20:31:25.178681337Z","Action":"pass","Package":"fx/good","Test":"TestTable","Elapsed":0}
+{"Time":"2026-11-14T20:31:25.178682676Z","Action":"output","Package":"fx/good","Output":"PASS\n"}
+{"Time":"2026-11-14T20:31:25.178726014Z","Action":"output","Package":"fx/good","Output":"coverage: 50.0% of statements\n"}
+{"Time":"2026-11-14T20:31:25.178729083Z","Action":"output","Package":"fx/good","Output":"ok  \tfx/good\t(cached)\tcoverage: 50.0% of statements\n"}
+{"Time":"2026-11-14T20:31:25.178734302Z","Action":"pass","Package":"fx/good","Elapsed":0}
