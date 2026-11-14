@@ -11,27 +11,41 @@ package omolar
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/kaliadmen/omolar/config"
+	"github.com/kaliadmen/omolar/logging"
+	"github.com/kaliadmen/omolar/server"
 )
 
 // Version is the framework version, reported by /health.
 const Version = "0.1.0-dev"
 
-var errNotImplemented = errors.New("not implemented")
-
 // App is an Omolar application.
 type App struct {
 	Config config.Config
 	Logger *slog.Logger
+
+	// mux routes requests to handlers. For Milestone 1 this is the standard
+	// library's http.ServeMux (which understands "GET /users/{id}" patterns
+	// since Go 1.22). Milestone 2 replaces it with our own trie router.
+	mux *http.ServeMux
 }
 
 // Option customises New.
+//
+// GO CONCEPT: the "functional options" pattern. Instead of a constructor with
+// ten parameters, New takes any number of Option functions. Each one tweaks
+// the settings. Callers only mention what they want to change:
+//
+//	omolar.New(cfg)                               // defaults
+//	omolar.New(cfg, omolar.WithLogOutput(file))   // one change
+//
+// Adding a new option later never breaks existing callers.
 type Option func(*settings)
 
 // settings holds what Options can change.
@@ -41,31 +55,74 @@ type settings struct {
 
 // WithLogOutput sends logs somewhere other than standard output.
 func WithLogOutput(w io.Writer) Option {
-	return func(s *settings) {}
+	// This returned function is a closure: it remembers w.
+	return func(s *settings) { s.logOutput = w }
 }
 
 // New creates an App from a validated Config.
 func New(cfg config.Config, opts ...Option) (*App, error) {
-	return nil, errNotImplemented
+	st := settings{logOutput: os.Stdout}
+	for _, opt := range opts {
+		opt(&st)
+	}
+
+	logger, err := logging.New(st.logOutput, logging.Options{
+		Level:   cfg.LogLevel,
+		Format:  cfg.LogFormat,
+		AppName: cfg.AppName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	app := &App{
+		Config: cfg,
+		Logger: logger,
+		mux:    http.NewServeMux(),
+	}
+
+	// Built-in routes every app gets.
+	app.mux.Handle("/health", server.Health(Version))
+
+	return app, nil
 }
 
 // Handle registers a handler for a pattern such as "GET /users/{id}".
-func (a *App) Handle(pattern string, h http.Handler) {}
+func (a *App) Handle(pattern string, h http.Handler) {
+	a.mux.Handle(pattern, h)
+}
 
 // HandleFunc registers a function as a handler.
-func (a *App) HandleFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) {}
+func (a *App) HandleFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) {
+	a.mux.HandleFunc(pattern, fn)
+}
 
 // Handler returns the app's root http.Handler.
+//
+// Today it's just the router. In Milestone 3 this is where the middleware
+// chain (security headers, request logging, panic recovery) wraps it.
 func (a *App) Handler() http.Handler {
-	return http.NotFoundHandler()
+	return a.mux
 }
 
 // Run listens on the configured address until ctx is cancelled.
 func (a *App) Run(ctx context.Context) error {
-	return errNotImplemented
+	return a.server().ListenAndServe(ctx)
 }
 
 // Serve is like Run but uses an existing listener (handy in tests).
 func (a *App) Serve(ctx context.Context, ln net.Listener) error {
-	return errNotImplemented
+	return a.server().Serve(ctx, ln)
+}
+
+// server builds a server.Server from the app's config.
+func (a *App) server() *server.Server {
+	return server.New(a.Handler(), server.Options{
+		Addr:            a.Config.Addr(),
+		ReadTimeout:     a.Config.ReadTimeout,
+		WriteTimeout:    a.Config.WriteTimeout,
+		IdleTimeout:     a.Config.IdleTimeout,
+		ShutdownTimeout: a.Config.ShutdownTimeout,
+		Logger:          a.Logger,
+	})
 }
