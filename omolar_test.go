@@ -148,3 +148,55 @@ func TestServe_EndToEnd(t *testing.T) {
 		t.Fatal("Serve did not stop after cancel")
 	}
 }
+
+// freePort finds a port nothing is using right now.
+func freePort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	return ln.Addr().(*net.TCPAddr).Port
+}
+
+func TestHealthcheck_RunningApp(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.Host = "127.0.0.1"
+	cfg.Port = freePort(t)
+	app, err := omolar.New(cfg, omolar.WithLogOutput(io.Discard))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go app.Run(ctx) //nolint:errcheck // stopped by cancel at the end
+
+	// The server needs a moment to start; retry for up to ~2 seconds.
+	var lastErr error
+	for i := 0; i < 100; i++ {
+		probeCtx, done := context.WithTimeout(context.Background(), time.Second)
+		lastErr = app.Healthcheck(probeCtx)
+		done()
+		if lastErr == nil {
+			return // healthy: test passes
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("Healthcheck never succeeded: %v", lastErr)
+}
+
+func TestHealthcheck_NothingRunning(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.Port = freePort(t) // nothing listens here
+	app, err := omolar.New(cfg, omolar.WithLogOutput(io.Discard))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := app.Healthcheck(ctx); err == nil {
+		t.Error("expected an error when the app isn't running")
+	}
+}

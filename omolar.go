@@ -11,6 +11,7 @@ package omolar
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -113,6 +114,12 @@ func (a *App) Run(ctx context.Context) error {
 // Serve is like Run but uses an existing listener (handy in tests).
 func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 	return a.server().Serve(ctx, ln)
+}
+
+// Healthcheck probes this app's own /health endpoint on the configured port.
+// Used by `<binary> healthcheck` inside Docker; see examples/hello.
+func (a *App) Healthcheck(ctx context.Context) error {
+	return errors.New("not implemented")
 }
 
 // server builds a server.Server from the app's config.
