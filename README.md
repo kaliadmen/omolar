@@ -17,16 +17,18 @@ A security-minded web framework for Go, built test-first on the standard library
 
 ## Quick start
 
-Requires Go 1.24+.
+Requires Docker (no local Go install needed).
 
 ```sh
 git clone https://github.com/kaliadmen/omolar
 cd omolar
-make run-hello
+make up
 ```
 
 Then open <http://localhost:4000>, <http://localhost:4000/hello/you> and
 <http://localhost:4000/health>. Press Ctrl+C to watch a graceful shutdown.
+
+Have Go 1.24+ installed instead? `make run-hello` works too.
 
 A minimal app:
 
@@ -64,12 +66,24 @@ with a list of every problem, not just the first.
 
 ## Development
 
+All development runs in Docker. `docker-compose.yml` has a `dev` service with the Go
+toolchain, and your checkout is mounted into it.
+
 ```sh
-make test      # all tests with the race detector
-make report    # run tests and write test-report.json
-make cover     # HTML coverage report
-make vet       # static checks
+make docker-test      # all tests with the race detector
+make docker-report    # run tests and write test-report.json
+make docker-cover     # HTML coverage report
+make docker-shell     # shell with go, git and make
+make docker-dev-run   # run examples/hello from source on :4001
+make up / make down   # run / stop the production image on :4000
 ```
+
+The production image is a two-stage build onto `distroless/static:nonroot` (~10–15 MB).
+It runs as non-root on a read-only filesystem with all capabilities dropped, and checks
+its own health with `/app healthcheck` because there's no curl.
+
+With Go installed locally, the same targets without `docker-` work: `make test`,
+`make report`, `make cover`, `make vet`.
 
 Each feature lands as a `test(...)` commit (failing tests) followed by a `feat(...)`
 commit (code that makes them pass). Learning notes for each milestone are in
@@ -77,7 +91,7 @@ commit (code that makes them pass). Learning notes for each milestone are in
 
 ## Roadmap
 
-- [x] **M1** Config, logging, server, graceful shutdown, test reports
+- [x] **M1** Config, logging, server, graceful shutdown, test reports, Docker
 - [ ] **M2** Radix-tree router with path parameters
 - [ ] **M3** Middleware: panic recovery, request IDs, request logging, security headers
 - [ ] **M4** Templates and static files

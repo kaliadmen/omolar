@@ -27,6 +27,11 @@ import (
 const Version = "0.1.0-dev"
 
 // App is an Omolar application.
+//
+// PATTERN: Facade. App gives one simple front door (New, HandleFunc, Run) to
+// several packages: config, logging, server and routing. Without it, every
+// app's main() would wire those together by hand and get the details wrong
+// differently each time (forgotten timeouts, logger not passed to the server).
 type App struct {
 	Config config.Config
 	Logger *slog.Logger
@@ -47,6 +52,10 @@ type App struct {
 //	omolar.New(cfg, omolar.WithLogOutput(file))   // one change
 //
 // Adding a new option later never breaks existing callers.
+//
+// PATTERN: Functional options. Problem: constructors that need optional
+// settings. Without it you get New(cfg, nil, nil, 0, "") style calls, or a
+// new constructor (NewWithLogger, NewWithLoggerAndX...) for every combination.
 type Option func(*settings)
 
 // settings holds what Options can change.

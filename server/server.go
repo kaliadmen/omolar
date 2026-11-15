@@ -45,6 +45,11 @@ type Server struct {
 }
 
 // New creates a Server that sends every request to handler.
+//
+// PATTERN: Constructor function with safe defaults. Go has no constructors, so
+// packages export New(...). Doing all setup here means nobody can create a
+// Server that forgot its timeouts. Without it, callers would build
+// http.Server{} themselves, and the zero value has NO timeouts.
 func New(handler http.Handler, opts Options) *Server {
 	opts.ReadTimeout = orDefault(opts.ReadTimeout, DefaultReadTimeout)
 	opts.WriteTimeout = orDefault(opts.WriteTimeout, DefaultWriteTimeout)

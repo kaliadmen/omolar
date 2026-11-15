@@ -33,6 +33,10 @@ func New(w io.Writer, opts Options) (*slog.Logger, error) {
 	// GO CONCEPT: interfaces. slog.Handler is an interface: "anything that can
 	// handle a log record". TextHandler and JSONHandler are two different
 	// types that both satisfy it, so `h` can hold either one.
+	//
+	// PATTERN: Strategy. The *how* (text vs JSON formatting) is a swappable
+	// object chosen at runtime; the code calling logger.Info never changes.
+	// Without it, every log call would need an if/else on the format.
 	var h slog.Handler
 	switch strings.ToLower(opts.Format) {
 	case "", "text":

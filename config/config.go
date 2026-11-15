@@ -43,6 +43,10 @@ type Config struct {
 // GO CONCEPT: function types. Functions are values in Go. Accepting a function
 // instead of calling os.LookupEnv directly lets tests pass in a fake
 // environment, with no global state to clean up.
+//
+// PATTERN: Dependency injection. FromLookup is *given* the thing it depends
+// on instead of reaching out for it (os.LookupEnv). Without it, tests would
+// have to change real environment variables and remember to undo them.
 type LookupFunc func(key string) (string, bool)
 
 // FromLookup builds a Config from settings provided by lookup, applies
@@ -144,6 +148,10 @@ func (c Config) IsProduction() bool {
 
 // loader reads settings and collects every error instead of stopping at the
 // first one.
+//
+// PATTERN: Notification (collect errors, report once). Each check adds to a
+// list rather than returning early. Without it, a .env file with five mistakes
+// takes five restarts to fix.
 type loader struct {
 	lookup LookupFunc
 	errs   []error

@@ -25,17 +25,32 @@ Omolar is a security-minded Go web framework. The owner (Quinze) is relearning G
   short `// GO CONCEPT:` comment explaining it.
 - Add `// TRY:` comments with small experiments the reader can do (change a value,
   delete a line, run a specific test) and what they should observe.
+- Add a `// PATTERN:` comment wherever a design pattern is used: name it, say what
+  problem it solves here, and what the code would look like without it. Use patterns
+  only when they solve a real problem, the Go way: small interfaces defined where
+  they're used, composition over inheritance, no global singletons.
 - Every exported identifier gets a godoc comment.
 
 ## Each milestone ends with
 
-- `docs/learning/NN-name.md`: concepts used, suggested reading order through the
-  files, and 3–5 "explain it back" questions.
+- `docs/learning/NN-name.md`: concepts used, patterns used, suggested reading order
+  through the files, and 3–5 "explain it back" questions.
 - `make report` passing, which writes `test-report.json`.
+
+## Environment
+
+The owner develops with GoLand over SSH into an Ubuntu VM and runs **everything in
+Docker**; Go is not installed on the VM. Every workflow must work through
+`docker compose` / the `make docker-*` targets. New services (databases, Redis...)
+go in `docker-compose.yml`, never "install X on the server".
 
 ## Commands
 
-- `make test` — all tests with the race detector
-- `make report` — runs tests and writes `test-report.json`
-- `make cover` — HTML coverage report
-- `make vet` — `go vet`
+On the VM (Docker):
+
+- `make docker-test` — all tests with the race detector, in the dev container
+- `make docker-report` — writes `test-report.json`
+- `make docker-shell` — shell in the dev container
+- `make up` / `make down` — run / stop the production image
+
+Inside the dev container or CI (plain Go): `make test`, `make report`, `make cover`, `make vet`.

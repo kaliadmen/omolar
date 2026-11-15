@@ -40,3 +40,46 @@ jobs:
 
       - name: Check for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: docker compose config --quiet
+
+      - name: Tests pass inside the dev container
+        run: |
+          export HOST_UID=$(id -u) HOST_GID=$(id -g)
+          docker compose run --rm dev make test
+
+      - name: Build production image
+        run: docker build -t omolar-hello:ci .
+
+      - name: Smoke test the image
+        run: |
+          docker run -d --name omolar -p 4000:4000 \
+            --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+            omolar-hello:ci
+
+          # Wait for Docker's HEALTHCHECK (/app healthcheck) to report healthy.
+          status=starting
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' omolar)
+            echo "health: $status"
+            [ "$status" = healthy ] && break
+            sleep 2
+          done
+          if [ "$status" != healthy ]; then docker logs omolar; exit 1; fi
+
+          curl -fsS http://localhost:4000/health; echo
+          curl -fsS http://localhost:4000/hello/ci
+
+          # docker stop sends SIGTERM; the app must shut down gracefully.
+          docker stop omolar
+          docker logs omolar 2>&1 | tee /tmp/logs.txt
+          grep -q "server stopped" /tmp/logs.txt
+
+      - name: Image size
+        run: docker image ls omolar-hello:ci

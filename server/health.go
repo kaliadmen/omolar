@@ -18,7 +18,11 @@ func Health(version string) http.Handler {
 
 	// GO CONCEPT: http.HandlerFunc is a function type that has a ServeHTTP
 	// method. Converting our function to it makes the function satisfy the
-	// http.Handler interface. This adapter pattern is everywhere in Go.
+	// http.Handler interface.
+	//
+	// PATTERN: Adapter. http.HandlerFunc adapts "a plain function" to "the
+	// http.Handler interface". Without it, every handler would need its own
+	// struct type just to hang a ServeHTTP method on.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
