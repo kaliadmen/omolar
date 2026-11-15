@@ -11,6 +11,7 @@ package omolar
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -73,6 +74,12 @@ func WithLogOutput(w io.Writer) Option {
 
 // New creates an App from a validated Config.
 func New(cfg config.Config, opts ...Option) (*App, error) {
+	// Every app goes through here, so this is where a Config built by hand
+	// (instead of loaded with config.Load) gets the same checks.
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("omolar: invalid config:\n%w", err)
+	}
+
 	st := settings{logOutput: os.Stdout}
 	for _, opt := range opts {
 		opt(&st)
@@ -99,14 +106,22 @@ func New(cfg config.Config, opts ...Option) (*App, error) {
 	return app, nil
 }
 
-// Config returns the app's configuration.
+// Config returns a copy of the app's configuration. Changing the copy has no
+// effect on the app: settings are fixed once New has validated them.
+//
+// GO CONCEPT: Go copies structs on assignment and when returning them. Because
+// every field of config.Config is a plain value (string, int, Duration), this
+// copy shares nothing with the original. If Config ever gains a slice or map
+// field, this method must clone it, since copying a struct only copies the
+// slice/map header and both would point at the same data.
 func (a *App) Config() config.Config {
-	return config.Config{}
+	return a.cfg
 }
 
-// Logger returns the app's structured logger.
+// Logger returns the app's structured logger. *slog.Logger is safe to share:
+// its methods never change it (With returns a new logger instead).
 func (a *App) Logger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+	return a.logger
 }
 
 // Handle registers a handler for a pattern such as "GET /users/{id}".
