@@ -1,0 +1,41 @@
+# Live reload for development. Used by `make docker-dev-run`.
+#
+# air watches the files below. When one changes, it rebuilds examples/hello and
+# restarts it. Save in GoLand, and a second later the new code is running.
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/hello ./examples/hello"
+  entrypoint = ["./tmp/hello"]
+
+  # What to watch. .env is included so changing a setting restarts the app.
+  include_ext = ["go", "html", "tmpl", "css", "js"]
+  include_file = [".env"]
+  exclude_dir = ["tmp", ".git", ".github", "docs", "bin", "dist"]
+  # Editing tests doesn't change the running app, so don't restart for them.
+  exclude_regex = ["_test\\.go$"]
+
+  # Wait 300ms after a change before rebuilding: GoLand can write several
+  # files when you save, and this turns them into one rebuild.
+  delay = 300
+
+  # Send Ctrl+C (SIGINT) instead of killing the app outright, so the graceful
+  # shutdown you built runs on every reload, just like `docker stop` in production.
+  send_interrupt = true
+  kill_delay = 5000000000 # nanoseconds = 5s, time for a graceful shutdown
+
+  # If the build fails, keep the last working version running and show the error.
+  stop_on_error = false
+
+  # File change events can't cross some shared folders (e.g. a folder shared in
+  # from a Windows host). If saves aren't noticed, set poll = true.
+  poll = false
+  poll_interval = 500
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true

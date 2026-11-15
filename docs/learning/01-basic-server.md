@@ -1,0 +1,161 @@
+# Milestone 1: A basic server
+
+**What you get:** a framework that loads settings, logs in a structured way, serves
+HTTP with safe timeouts, and shuts down gracefully. Plus a test report tool.
+
+## Reading order
+
+Read each test file *before* its code file. The tests say what the code must do.
+
+1. `config/dotenv_test.go` → `config/dotenv.go`
+   A hand-written parser. Watch how one line is broken into key, value, quotes and comments.
+2. `config/config_test.go` + `config/validate_test.go` → `config/config.go`
+   Defaults, validation, and why every error is collected before returning.
+   `Validate()` is the single definition of "valid", for loaded *and* hand-built configs.
+3. `logging/logging_test.go` → `logging/logging.go`
+   Short. Your first look at interfaces (`slog.Handler`).
+4. `server/health_test.go` → `server/health.go`
+   The simplest possible HTTP handler, tested without a network.
+5. `server/server_test.go` → `server/server.go`
+   The hardest file this milestone: goroutines, channels, `select`, contexts.
+   Take your time here. Start with the table in `Serve`'s comment: every way
+   `Serve` can end, and what it returns for each. Then find the test for each row.
+6. `omolar_test.go` → `omolar.go`
+   How the pieces plug together. The functional options pattern.
+7. `examples/hello/main.go`: a real app using it all.
+8. Bonus: `internal/testreport/`, the tool behind `make report`.
+
+Search the code for `GO CONCEPT:` to jump between explanations, and `TRY:` for experiments.
+
+## Go concepts introduced
+
+| Concept | Where to see it |
+|---|---|
+| Packages, exported vs unexported names | everywhere; capital letter = exported |
+| `internal/` packages | `internal/testreport` |
+| Structs and struct tags | `testreport.Event` |
+| Defined types (`type Status string`) | `testreport.Status` |
+| Multiple return values, `(T, error)` | `config.ParseDotEnv` |
+| Custom error types, `errors.As` | `config.ParseError`, `dotenv_test.go` |
+| `errors.Join`, `errors.Is`, `%w` wrapping | `config.FromLookup`, `config.Load` |
+| `defer` | `testreport_test.go`, `server.Serve` |
+| Function types and closures | `config.LookupFunc`, `fakeEnv` |
+| Variadic functions (`...any`) | `loader.fail` |
+| Value vs pointer receivers | `Config.IsProduction` vs `loader` methods |
+| Interfaces | `slog.Handler`, `http.Handler` |
+| `http.HandlerFunc` adapter | `server.Health` |
+| Goroutines, channels, `select` | `server.Serve`, `server_test.go` |
+| `context.Context` and cancellation | `server.Serve`, `examples/hello` |
+| Functional options | `omolar.Option` |
+| Table-driven tests, subtests, `t.Helper` | every `_test.go` file |
+| White-box vs black-box tests | `server_test.go` (package server) vs `omolar_test.go` (package omolar_test) |
+| `httptest` | `health_test.go`, `omolar_test.go` |
+| `sync/atomic` (`CompareAndSwap`) | `Server.started`: only one `Serve` can win |
+| `sync.Mutex` | `Server.addr`, `syncBuffer` in tests |
+| `sync.WaitGroup` and `wg.Go` (Go 1.25+) | `server_test.go`: waiting for client goroutines |
+| `sync.Once` | `serveApp` in `omolar_test.go`: a stop function safe to call twice |
+| `panic` / `recover` | `TestServe_NilListener` |
+| Struct copies vs shared data | `App.Config()` returns a copy |
+| Request contexts (`http.Server.BaseContext`) | `server.New`, `TestServe_ShutdownDeadlineExceeded` |
+
+## Patterns used
+
+Search the code for `PATTERN:` to find each one.
+
+| Pattern | Where | Problem it solves |
+|---|---|---|
+| Facade | `omolar.App` | One simple entry point over config, logging, server and routing |
+| Functional options | `omolar.Option`, `WithLogOutput` | Optional settings without constructor explosion |
+| Dependency injection | `config.LookupFunc` | Testable without touching the real environment |
+| Notification | `config.loader` | Report every bad setting at once |
+| Strategy | `slog.Handler` in `logging.New` | Text or JSON output, chosen at runtime |
+| Adapter | `http.HandlerFunc` in `server.Health` | A plain function used as an `http.Handler` |
+| Constructor with safe defaults | `server.New` | Impossible to build a server with no timeouts |
+
+## Docker
+
+Go isn't installed on the VM; everything runs in containers.
+
+| File | What it does |
+|---|---|
+| `docker-compose.yml` → `dev` | Go toolchain container. Your code is mounted in; caches live in a volume |
+| `docker-compose.yml` → `app` | Runs the production image, hardened (read-only, no capabilities) |
+| `Dockerfile` | Two-stage build: compile with full Go, ship only the binary on distroless |
+| `server/probe.go` + `App.Healthcheck` | `/app healthcheck`: lets Docker check health without curl |
+| `.air.toml` | Live reload for `make docker-dev-run`: rebuild and restart on save |
+
+Things worth understanding:
+- **Why two stages?** The Go image is ~800MB of compilers and tools. The app only needs its binary.
+- **Why distroless?** No shell means an attacker who breaks in can't run `sh`, `curl` or `apt`.
+- **Why `ENTRYPOINT ["/app"]` and not `ENTRYPOINT /app`?** The list form runs the app as PID 1,
+  so `docker stop`'s SIGTERM reaches it and triggers the graceful shutdown you built.
+- **Why `user: ${HOST_UID}`?** Files the container writes (test-report.json) belong to you, not root.
+- **Why does live reload log "server stopping / server stopped" on every save?** air sends
+  Ctrl+C (`send_interrupt = true`), so your graceful shutdown runs each time. Free practice
+  watching it work.
+- **Why Go 1.27?** Go only gives security fixes to its two newest releases (1.27 and 1.26 right now).
+- **Why `name: omolar` instead of `container_name:`?** Fixed names like `postgres` collide
+  across projects; a project name prefixes everything automatically.
+
+## Lifecycle rules (from the Milestone 1 review)
+
+How `Serve` can end, and what it returns:
+
+| What happened | Returns | Also |
+|---|---|---|
+| ctx cancelled, all requests finished in time | `nil` | listener closed |
+| ctx was already cancelled before `Serve` | `nil` | never starts; listener closed; `Ready()` never closes |
+| ctx cancelled, then the listener failed | `nil` | cancellation wins |
+| Requests still running after `ShutdownTimeout` | error wrapping `context.DeadlineExceeded` | request contexts cancelled, connections closed |
+| Listener failed while ctx was live | error wrapping the listener error | open requests drained first |
+| `Serve` called a second time | `ErrServerUsed` | the new listener is closed |
+
+And for tests:
+- **Every goroutine a test starts is waited for** before the test ends (`startServer`, `serveApp`, `wg.Go`).
+- **No test closes a port and assumes it stays free.** Tests hold their listeners, or use `":0"`
+  and ask `Server.Addr()` which port the OS picked.
+
+## Security decisions in this milestone
+
+- **No zero timeouts.** In `net/http`, zero means "wait forever". A slow client could tie up the server.
+- **`ReadHeaderTimeout`** defends against Slowloris (trickling headers to hold connections open).
+- **`DEBUG=true` is refused in production.** Debug output leaks internals.
+- **`/health` reveals only status and version.** Health endpoints are usually public.
+- **`.env` is git-ignored** and `.env.example` holds no secrets.
+- **User input from the URL is served as `text/plain`** in the example, so it can't become HTML/JS.
+- **The image runs as non-root on distroless**, read-only, with every Linux capability dropped.
+- **`Probe` caps how much it reads** from the network (4KB), a habit that prevents memory exhaustion.
+- **A nil handler is refused.** `http.Server` would silently fall back to the global
+  `DefaultServeMux`, which any imported package can add routes to.
+- **Validation can't be skipped.** `omolar.New` validates the Config, and the App keeps a private copy.
+- **`Probe` never follows redirects**, so it can't report another app's health as ours.
+
+## Try it
+
+```sh
+make docker-test       # all tests in the dev container, race detector on
+make docker-report     # writes test-report.json; send it to Claude
+make docker-dev-run    # live reload at http://<vm-ip>:4001: save a file, watch it restart
+make up                # run the production image: http://<vm-ip>:4000
+make docker-cover      # coverage.html: which lines do the tests never run?
+docker ps              # after `make up`: watch STATUS go from (health: starting) to (healthy)
+```
+
+In GoLand: GoLand can run tests through Docker, but the simplest start is the
+terminal. Run `make docker-shell`, then inside it:
+`go test ./server -run TestServe_GracefulShutdown -v`. Add a
+`t.Logf(...)` or `log.Println(...)` line inside the `case <-ctx.Done():` branch of
+`server.go` and run it again to watch a shutdown step by step.
+
+## Explain it back
+
+You own this code when you can answer these without looking:
+
+1. Why does `config.Load` let real environment variables win over the `.env` file? When would that matter in a deployment?
+2. In `server.Serve`, why is a *new* context created for `Shutdown` instead of reusing `ctx`?
+3. What would happen if `server.New` left `ReadTimeout` at zero, and why is that a security problem?
+4. `fakeEnv` returns a function. What does that function "remember", and what's that called?
+5. Why does `server.Serve` treat `http.ErrServerClosed` as success?
+6. The production image has no curl. How does Docker know the app is healthy?
+7. Why does `Serve` cancel request contexts only when the shutdown deadline passes, and not as soon as shutdown starts?
+8. Why is "close a port, then reuse its number" a flaky way to write a test? What do the tests do instead?
