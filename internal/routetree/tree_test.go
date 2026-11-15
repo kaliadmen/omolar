@@ -242,19 +242,22 @@ func TestInsert_ReturnsPatternErrors(t *testing.T) {
 }
 
 // P14: registration order never matters (design §6.1).
+// orderRoutes is a realistic, conflict-free route set used by several tests.
+var orderRoutes = []string{
+	"GET /", "GET /users", "GET /users/", "GET /users/me", "POST /users/new",
+	"GET /users/{id}", "PUT /users/{id}", "GET /users/{id}/posts",
+	"GET /users/{id}/posts/{post}", "DELETE /users/{id}/posts/{post}",
+	"GET /static/{p...}", "GET /static/app.js", "HEAD /static/app.js",
+	"GET /files/{name}", "GET /files/{$}", "PUT /files/{p...}",
+	"GET /a/b/z", "GET /a/{x}/c", "GET /a/b/{y}/w", "GET /a/{x}/c/d",
+	"GET /health", "OPTIONS /health",
+	"GET /orgs/{org}/repos/{repo}", "GET /orgs/{org}/repos/{repo}/issues/{n}",
+	"POST /orgs/{org}/repos", "GET /docs/{p...}", "GET /docs/{section}/{page}",
+	"GET /{p...}",
+}
+
 func TestMatch_OrderIndependent(t *testing.T) {
-	routes := []string{
-		"GET /", "GET /users", "GET /users/", "GET /users/me", "POST /users/new",
-		"GET /users/{id}", "PUT /users/{id}", "GET /users/{id}/posts",
-		"GET /users/{id}/posts/{post}", "DELETE /users/{id}/posts/{post}",
-		"GET /static/{p...}", "GET /static/app.js", "HEAD /static/app.js",
-		"GET /files/{name}", "GET /files/{$}", "PUT /files/{p...}",
-		"GET /a/b/z", "GET /a/{x}/c", "GET /a/b/{y}/w", "GET /a/{x}/c/d",
-		"GET /health", "OPTIONS /health",
-		"GET /orgs/{org}/repos/{repo}", "GET /orgs/{org}/repos/{repo}/issues/{n}",
-		"POST /orgs/{org}/repos", "GET /docs/{p...}", "GET /docs/{section}/{page}",
-		"GET /{p...}",
-	}
+	routes := orderRoutes
 	requests := []struct{ method, path string }{
 		{"GET", "/"}, {"GET", "/users"}, {"GET", "/users/"}, {"GET", "/users/me"},
 		{"GET", "/users/new"}, {"POST", "/users/new"}, {"PUT", "/users/9"},
