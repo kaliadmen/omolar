@@ -279,6 +279,37 @@ func TestServe_CanRunAgainAfterStopping(t *testing.T) {
 	}
 }
 
+func TestRun_ContextAlreadyCancelled(t *testing.T) {
+	app := newApp(t, config.Default(), io.Discard)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := app.Run(ctx); err != nil {
+		t.Errorf("Run with a cancelled context returned %v, want nil", err)
+	}
+}
+
+func TestRun_PortInUseIsAnError(t *testing.T) {
+	// The test holds the port, so Run can't have it. That makes the failure
+	// certain, instead of depending on what else is running on the machine.
+	ln := listen(t)
+	defer ln.Close()
+
+	cfg := config.Default()
+	cfg.Host = "127.0.0.1"
+	cfg.Port = portOf(ln)
+	app := newApp(t, cfg, io.Discard)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := app.Run(ctx)
+	if err == nil {
+		t.Fatal("Run should fail when the port is taken")
+	}
+	if !strings.Contains(err.Error(), "listen") {
+		t.Errorf("error should say it couldn't listen, got: %v", err)
+	}
+}
+
 // ---- Review finding: independent instances share no mutable state ----------
 
 func TestApps_AreIndependent(t *testing.T) {

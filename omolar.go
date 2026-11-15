@@ -91,6 +91,9 @@ func New(cfg config.Config, opts ...Option) (*App, error) {
 		AppName: cfg.AppName,
 	})
 	if err != nil {
+		// Can't happen with a validated Config today (Validate checks the
+		// level and format). Kept so a future logging option can't fail
+		// silently. This is why this function isn't at 100% coverage.
 		return nil, err
 	}
 
@@ -173,7 +176,9 @@ func (a *App) Healthcheck(ctx context.Context) error {
 	return server.Probe(ctx, "http://"+addr+"/health")
 }
 
-// server builds a server.Server from the app's config.
+// server builds a server.Server from the app's config. Its error can't
+// happen with a validated Config (timeouts are positive, the handler isn't
+// nil), but it's still checked rather than ignored.
 func (a *App) server() (*server.Server, error) {
 	return server.New(a.Handler(), server.Options{
 		Addr:            a.cfg.Addr(),
