@@ -13,6 +13,14 @@
 DC  := docker compose
 DEV := $(DC) run --rm dev
 
+# Live reload tool used by docker-dev-run (https://github.com/air-verse/air).
+# Pinned so everyone gets the same version. It runs via `go run`, so it is not
+# a dependency of the framework and never appears in go.mod.
+AIR_VERSION := v1.67.4
+
+# Port for docker-dev-run (the `app` service uses 4000).
+export DEV_PORT ?= 4001
+
 # Passed to docker-compose.yml so the dev container runs as your user.
 export HOST_UID := $(shell id -u)
 export HOST_GID := $(shell id -g)
@@ -47,9 +55,10 @@ docker-fmt:
 docker-shell:
 	$(DEV) bash
 
-## docker-dev-run: run examples/hello from source at http://<vm>:4001 (Ctrl+C to stop)
+## docker-dev-run: run examples/hello with live reload at http://<vm>:4001 (save a file, it restarts)
 docker-dev-run:
-	$(DC) run --rm --service-ports dev go run ./examples/hello
+	$(DC) run --rm --service-ports -e PORT=$(DEV_PORT) dev \
+		go run github.com/air-verse/air@$(AIR_VERSION) -c .air.toml
 
 ## docker-build: build the production image (omolar-hello:dev)
 docker-build:

@@ -73,6 +73,7 @@ Go isn't installed on the VM; everything runs in containers.
 | `docker-compose.yml` → `app` | Runs the production image, hardened (read-only, no capabilities) |
 | `Dockerfile` | Two-stage build: compile with full Go, ship only the binary on distroless |
 | `server/probe.go` + `App.Healthcheck` | `/app healthcheck`: lets Docker check health without curl |
+| `.air.toml` | Live reload for `make docker-dev-run`: rebuild and restart on save |
 
 Things worth understanding:
 - **Why two stages?** The Go image is ~800MB of compilers and tools. The app only needs its binary.
@@ -80,6 +81,10 @@ Things worth understanding:
 - **Why `ENTRYPOINT ["/app"]` and not `ENTRYPOINT /app`?** The list form runs the app as PID 1,
   so `docker stop`'s SIGTERM reaches it and triggers the graceful shutdown you built.
 - **Why `user: ${HOST_UID}`?** Files the container writes (test-report.json) belong to you, not root.
+- **Why does live reload log "server stopping / server stopped" on every save?** air sends
+  Ctrl+C (`send_interrupt = true`), so your graceful shutdown runs each time. Free practice
+  watching it work.
+- **Why Go 1.27?** Go only gives security fixes to its two newest releases (1.27 and 1.26 right now).
 - **Why `name: omolar` instead of `container_name:`?** Fixed names like `postgres` collide
   across projects; a project name prefixes everything automatically.
 
@@ -99,7 +104,7 @@ Things worth understanding:
 ```sh
 make docker-test       # all tests in the dev container, race detector on
 make docker-report     # writes test-report.json; send it to Claude
-make docker-dev-run    # run from source: http://<vm-ip>:4001, Ctrl+C to stop
+make docker-dev-run    # live reload at http://<vm-ip>:4001: save a file, watch it restart
 make up                # run the production image: http://<vm-ip>:4000
 make docker-cover      # coverage.html: which lines do the tests never run?
 docker ps              # after `make up`: watch STATUS go from (health: starting) to (healthy)

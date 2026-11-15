@@ -18,7 +18,9 @@ name: omolar
 
 services:
   dev:
-    image: golang:1.24
+    # Go 1.27: Go only ships security fixes for its two newest releases,
+    # so keep this (and the Dockerfile and go.mod) on a supported version.
+    image: golang:1.27
     # Only started when targeted explicitly (`docker compose run dev ...`),
     # so `docker compose up` doesn't start an idle toolchain container.
     profiles: ["dev"]
@@ -26,6 +28,10 @@ services:
     # coverage.html) belong to you, not root. The Makefile sets these.
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /src
+    # Run a tiny init process as PID 1 that forwards Ctrl+C to the app and
+    # cleans up exited child processes. Live reload starts and stops the app
+    # over and over, so this matters here.
+    init: true
     environment:
       # Keep Go's caches in the named volume below, so downloads and builds
       # survive between runs instead of starting from scratch every time.
@@ -41,8 +47,10 @@ services:
       - go_cache:/go
     ports:
       # Only published with `run --service-ports` (make docker-dev-run).
-      # 4001 on the VM so it never clashes with the `app` service on 4000.
-      - "${DEV_PORT:-4001}:4000"
+      # 4001 so it never clashes with the `app` service on 4000. The same
+      # number is used inside the container (the Makefile sets PORT to it),
+      # so the URL in the app's startup log is the one you actually open.
+      - "${DEV_PORT:-4001}:${DEV_PORT:-4001}"
 
   app:
     build: .

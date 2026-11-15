@@ -13,3 +13,5 @@ coverage.html
 test-report.json
 *.test
 docs/
+tmp/
+.air.toml

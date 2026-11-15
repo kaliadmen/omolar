@@ -44,6 +44,10 @@ Docker**; Go is not installed on the VM. Every workflow must work through
 `docker compose` / the `make docker-*` targets. New services (databases, Redis...)
 go in `docker-compose.yml`, never "install X on the server".
 
+Stay on a supported Go release (one of the two newest). The version lives in three
+places that must match: `go.mod`, `Dockerfile` (`GO_VERSION`), `docker-compose.yml`
+(`dev` image).
+
 ## Commands
 
 On the VM (Docker):
@@ -51,6 +55,7 @@ On the VM (Docker):
 - `make docker-test` — all tests with the race detector, in the dev container
 - `make docker-report` — writes `test-report.json`
 - `make docker-shell` — shell in the dev container
+- `make docker-dev-run` — run examples/hello with live reload (air) on :4001
 - `make up` / `make down` — run / stop the production image
 
 Inside the dev container or CI (plain Go): `make test`, `make report`, `make cover`, `make vet`.

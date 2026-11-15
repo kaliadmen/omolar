@@ -17,7 +17,7 @@ A security-minded web framework for Go, built test-first on the standard library
 
 ## Quick start
 
-Requires Docker (no local Go install needed).
+Requires Docker (no local Go install needed). Built on Go 1.27.
 
 ```sh
 git clone https://github.com/kaliadmen/omolar
@@ -28,7 +28,7 @@ make up
 Then open <http://localhost:4000>, <http://localhost:4000/hello/you> and
 <http://localhost:4000/health>. Press Ctrl+C to watch a graceful shutdown.
 
-Have Go 1.24+ installed instead? `make run-hello` works too.
+Have Go 1.27+ installed instead? `make run-hello` works too.
 
 A minimal app:
 
@@ -74,7 +74,7 @@ make docker-test      # all tests with the race detector
 make docker-report    # run tests and write test-report.json
 make docker-cover     # HTML coverage report
 make docker-shell     # shell with go, git and make
-make docker-dev-run   # run examples/hello from source on :4001
+make docker-dev-run   # run examples/hello with live reload on :4001
 make up / make down   # run / stop the production image on :4000
 ```
 

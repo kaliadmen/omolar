@@ -10,7 +10,7 @@
 #
 # Build another app:  docker build --build-arg APP=./path/to/app -t myapp .
 
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.27
 
 # ---- Stage 1: build ---------------------------------------------------------
 FROM golang:${GO_VERSION} AS build
