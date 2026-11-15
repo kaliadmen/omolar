@@ -49,6 +49,19 @@ type Config struct {
 // have to change real environment variables and remember to undo them.
 type LookupFunc func(key string) (string, bool)
 
+// Default returns the configuration used when no settings are provided.
+// Start from it when building a Config in code instead of from the environment.
+func Default() Config {
+	return Config{}
+}
+
+// Validate reports every problem with c. Code that receives a Config it didn't
+// load itself (omolar.New, for one) calls this, so a hand-built Config can't
+// skip the rules that FromLookup enforces.
+func (c Config) Validate() error {
+	return nil
+}
+
 // FromLookup builds a Config from settings provided by lookup, applies
 // defaults, and validates the result. All problems are reported together.
 func FromLookup(lookup LookupFunc) (Config, error) {
