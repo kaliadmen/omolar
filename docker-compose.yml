@@ -1,0 +1,65 @@
+# Docker Compose for Omolar. You need Docker on the VM, not Go.
+#
+#   dev  Go toolchain container. Your code is mounted at /src, so edits made in
+#        GoLand are seen immediately. Used by the `make docker-*` targets.
+#   app  The production image of examples/hello, built from the Dockerfile.
+#
+# Databases, Redis, MinIO etc. are added here in later milestones.
+#
+# Quick reference (or just use the Makefile):
+#   docker compose run --rm dev make test     run the tests
+#   docker compose up --build app             build and run the app
+#   docker compose down                       stop everything
+
+# A project name prefixes container names (omolar-app-1). That avoids clashes
+# with containers from your other projects, which fixed `container_name:`
+# values like "postgres" would cause.
+name: omolar
+
+services:
+  dev:
+    image: golang:1.24
+    # Only started when targeted explicitly (`docker compose run dev ...`),
+    # so `docker compose up` doesn't start an idle toolchain container.
+    profiles: ["dev"]
+    # Run as your VM user, so files the container creates (test-report.json,
+    # coverage.html) belong to you, not root. The Makefile sets these.
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /src
+    environment:
+      # Keep Go's caches in the named volume below, so downloads and builds
+      # survive between runs instead of starting from scratch every time.
+      GOCACHE: /go/.cache/go-build
+      GOMODCACHE: /go/pkg/mod
+      # Lets git inside the container read the mounted repo even if the file
+      # owner differs. The test report uses git for the commit hash.
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: /src
+    volumes:
+      - .:/src
+      - go_cache:/go
+    ports:
+      # Only published with `run --service-ports` (make docker-dev-run).
+      # 4001 on the VM so it never clashes with the `app` service on 4000.
+      - "${DEV_PORT:-4001}:4000"
+
+  app:
+    build: .
+    image: omolar-hello:dev
+    ports:
+      - "${APP_PORT:-4000}:4000"
+    environment:
+      APP_NAME: omolar
+      APP_ENV: development
+      LOG_LEVEL: info
+      LOG_FORMAT: text
+    # Hardening. The app writes nothing to disk, needs no Linux capabilities,
+    # and never needs to gain privileges, so take all of that away.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  go_cache:

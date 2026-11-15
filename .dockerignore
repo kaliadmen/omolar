@@ -1,0 +1,15 @@
+# Keep the build context small and keep secrets out of images.
+.git
+.github
+.idea
+.vscode
+.env
+.env.*
+!.env.example
+bin/
+dist/
+coverage.out
+coverage.html
+test-report.json
+*.test
+docs/
