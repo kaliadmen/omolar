@@ -54,6 +54,12 @@ jobs:
           export HOST_UID=$(id -u) HOST_GID=$(id -g)
           docker compose run --rm dev make test
 
+      - name: Live-reload tool runs in the dev container
+        run: |
+          export HOST_UID=$(id -u) HOST_GID=$(id -g)
+          AIR_VERSION=$(sed -n 's/^AIR_VERSION := //p' Makefile)
+          docker compose run --rm dev go run github.com/air-verse/air@$AIR_VERSION -v
+
       - name: Build production image
         run: docker build -t omolar-hello:ci .
 
