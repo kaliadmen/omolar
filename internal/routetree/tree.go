@@ -88,6 +88,11 @@ func (t *Tree[V]) Insert(pattern string, value V) error {
 	if err != nil {
 		return err
 	}
+	// Check for conflicts BEFORE touching the tree, so a rejected route
+	// leaves no half-built nodes behind.
+	if err := t.checkConflict(p); err != nil {
+		return err
+	}
 
 	r := &route[V]{pat: p, value: value}
 	for _, sg := range p.segments {
