@@ -22,7 +22,19 @@ func Probe(ctx context.Context, url string) error {
 		return fmt.Errorf("probe: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	// A client of our own instead of http.DefaultClient, which is shared by
+	// everything in the process. No keep-alive: a probe makes one request,
+	// so there's no idle connection (or goroutine) left behind afterwards.
+	client := &http.Client{
+		Transport: &http.Transport{DisableKeepAlives: true},
+		// Never follow redirects. A health endpoint that redirects is
+		// misconfigured, and following it could report "healthy" for a
+		// different app entirely. The 3xx is returned as-is and fails below.
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("probe: %w", err)
 	}
