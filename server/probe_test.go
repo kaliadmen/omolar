@@ -66,17 +66,48 @@ func TestProbe_Unhealthy(t *testing.T) {
 	}
 }
 
-func TestProbe_NothingListening(t *testing.T) {
-	// Grab a free port and close it again, so nothing is listening there.
+func TestProbe_ConnectionDropped(t *testing.T) {
+	// A listener the test keeps open, which accepts each connection and
+	// hangs up straight away: an app that's crashing or not speaking HTTP.
+	// (Closing a port and hoping nothing else grabs it would be flaky.)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr := ln.Addr().String()
-	ln.Close()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return // listener closed at the end of the test
+			}
+			conn.Close()
+		}
+	}()
+	t.Cleanup(func() { ln.Close(); <-done }) // stop and join the goroutine
 
-	if err := Probe(context.Background(), "http://"+addr+"/health"); err == nil {
-		t.Error("expected an error when nothing is listening")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := Probe(ctx, "http://"+ln.Addr().String()+"/health"); err == nil {
+		t.Error("expected an error when the connection is dropped")
+	}
+}
+
+func TestProbe_DoesNotFollowRedirects(t *testing.T) {
+	// A health endpoint that redirects is misconfigured. Following the
+	// redirect could report "healthy" based on a different app entirely.
+	healthy := httptest.NewServer(Health("1"))
+	defer healthy.Close()
+	redirecting := httptest.NewServer(http.RedirectHandler(healthy.URL, http.StatusFound))
+	defer redirecting.Close()
+
+	err := Probe(context.Background(), redirecting.URL)
+	if err == nil {
+		t.Fatal("expected an error for a redirect")
+	}
+	if !strings.Contains(err.Error(), "302") {
+		t.Errorf("error should mention the 302 status, got: %v", err)
 	}
 }
 

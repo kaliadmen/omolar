@@ -117,12 +117,20 @@ func (a *App) Handler() http.Handler {
 
 // Run listens on the configured address until ctx is cancelled.
 func (a *App) Run(ctx context.Context) error {
-	return a.server().ListenAndServe(ctx)
+	srv, err := a.server()
+	if err != nil {
+		return err
+	}
+	return srv.ListenAndServe(ctx)
 }
 
 // Serve is like Run but uses an existing listener (handy in tests).
 func (a *App) Serve(ctx context.Context, ln net.Listener) error {
-	return a.server().Serve(ctx, ln)
+	srv, err := a.server()
+	if err != nil {
+		return err
+	}
+	return srv.Serve(ctx, ln)
 }
 
 // Healthcheck probes this app's own /health endpoint on the configured port.
@@ -139,7 +147,7 @@ func (a *App) Healthcheck(ctx context.Context) error {
 }
 
 // server builds a server.Server from the app's config.
-func (a *App) server() *server.Server {
+func (a *App) server() (*server.Server, error) {
 	return server.New(a.Handler(), server.Options{
 		Addr:            a.Config.Addr(),
 		ReadTimeout:     a.Config.ReadTimeout,

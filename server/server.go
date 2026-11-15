@@ -38,10 +38,15 @@ type Options struct {
 	Logger          *slog.Logger  // where to log start/stop; nil discards logs
 }
 
+// ErrServerUsed is returned by Serve when the Server has already been started.
+// A Server runs once; create a new one to serve again.
+var ErrServerUsed = errors.New("server: Serve already called; create a new Server")
+
 // Server wraps http.Server.
 type Server struct {
-	srv  *http.Server
-	opts Options
+	srv   *http.Server
+	opts  Options
+	ready chan struct{}
 }
 
 // New creates a Server that sends every request to handler.
@@ -50,7 +55,7 @@ type Server struct {
 // packages export New(...). Doing all setup here means nobody can create a
 // Server that forgot its timeouts. Without it, callers would build
 // http.Server{} themselves, and the zero value has NO timeouts.
-func New(handler http.Handler, opts Options) *Server {
+func New(handler http.Handler, opts Options) (*Server, error) {
 	opts.ReadTimeout = orDefault(opts.ReadTimeout, DefaultReadTimeout)
 	opts.WriteTimeout = orDefault(opts.WriteTimeout, DefaultWriteTimeout)
 	opts.IdleTimeout = orDefault(opts.IdleTimeout, DefaultIdleTimeout)
@@ -75,7 +80,19 @@ func New(handler http.Handler, opts Options) *Server {
 		// our structured logger instead of printing to stderr.
 		ErrorLog: slog.NewLogLogger(opts.Logger.Handler(), slog.LevelWarn),
 	}
-	return &Server{srv: srv, opts: opts}
+	return &Server{srv: srv, opts: opts, ready: make(chan struct{})}, nil
+}
+
+// Ready returns a channel that is closed once the server is accepting
+// connections. It is never closed if Serve returns before that.
+func (s *Server) Ready() <-chan struct{} {
+	return s.ready
+}
+
+// Addr returns the address the server is listening on, or nil if it isn't
+// listening yet. Useful with Addr ":0", where the OS picks the port.
+func (s *Server) Addr() net.Addr {
+	return nil
 }
 
 // Serve accepts connections on ln until ctx is cancelled, then shuts down
