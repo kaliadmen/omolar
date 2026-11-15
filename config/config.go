@@ -49,57 +49,129 @@ type Config struct {
 // have to change real environment variables and remember to undo them.
 type LookupFunc func(key string) (string, bool)
 
+// The allowed values for the settings that are a fixed list of choices.
+var (
+	validEnvs       = []string{"development", "test", "production"}
+	validLogLevels  = []string{"debug", "info", "warn", "error"}
+	validLogFormats = []string{"text", "json"}
+)
+
 // Default returns the configuration used when no settings are provided.
-// Start from it when building a Config in code instead of from the environment.
+// Start from it when building a Config in code instead of from the environment:
+//
+//	cfg := config.Default()
+//	cfg.Port = 8080
 func Default() Config {
-	return Config{}
+	return Config{
+		AppName: "omolar",
+		Env:     "development",
+		Debug:   false,
+
+		Host: "",
+		Port: 4000,
+
+		ReadTimeout:     15 * time.Second,
+		WriteTimeout:    30 * time.Second,
+		IdleTimeout:     60 * time.Second,
+		ShutdownTimeout: 10 * time.Second,
+
+		LogLevel:  "info",
+		LogFormat: "text",
+	}
 }
 
 // Validate reports every problem with c. Code that receives a Config it didn't
 // load itself (omolar.New, for one) calls this, so a hand-built Config can't
 // skip the rules that FromLookup enforces.
+//
+// Errors name the environment variable, since that's usually what you'd fix.
 func (c Config) Validate() error {
-	return nil
+	var errs []error
+	bad := func(key, format string, args ...any) {
+		errs = append(errs, fmt.Errorf("%s: %s", key, fmt.Sprintf(format, args...)))
+	}
+
+	if !validAppName(c.AppName) {
+		bad("APP_NAME", "use only letters, digits, '-' and '_', got %q", c.AppName)
+	}
+	if !slices.Contains(validEnvs, c.Env) {
+		bad("APP_ENV", "must be one of %s, got %q", strings.Join(validEnvs, ", "), c.Env)
+	}
+	if c.Env == "production" && c.Debug {
+		// Security: debug mode can expose stack traces and internal details.
+		bad("DEBUG", "must be false when APP_ENV=production")
+	}
+
+	if !validHost(c.Host) {
+		bad("HOST", "must be empty, an IP address or a hostname (no port), got %q", c.Host)
+	}
+	if c.Port < 1 || c.Port > 65535 {
+		bad("PORT", "must be between 1 and 65535, got %d", c.Port)
+	}
+
+	// A zero timeout in net/http means "wait forever", which lets slow or
+	// malicious clients hold connections open. So zero is an error here, not
+	// a quiet fallback.
+	timeouts := []struct {
+		key string
+		d   time.Duration
+	}{
+		{"READ_TIMEOUT", c.ReadTimeout},
+		{"WRITE_TIMEOUT", c.WriteTimeout},
+		{"IDLE_TIMEOUT", c.IdleTimeout},
+		{"SHUTDOWN_TIMEOUT", c.ShutdownTimeout},
+	}
+	for _, t := range timeouts {
+		if t.d <= 0 {
+			bad(t.key, "must be greater than zero, got %s", t.d)
+		}
+	}
+
+	if !slices.Contains(validLogLevels, c.LogLevel) {
+		bad("LOG_LEVEL", "must be one of %s, got %q", strings.Join(validLogLevels, ", "), c.LogLevel)
+	}
+	if !slices.Contains(validLogFormats, c.LogFormat) {
+		bad("LOG_FORMAT", "must be one of %s, got %q", strings.Join(validLogFormats, ", "), c.LogFormat)
+	}
+
+	// GO CONCEPT: errors.Join (Go 1.20+) bundles several errors into one.
+	// Its message is each error on its own line. Join of nothing is nil.
+	return errors.Join(errs...)
 }
 
 // FromLookup builds a Config from settings provided by lookup, applies
 // defaults, and validates the result. All problems are reported together.
 func FromLookup(lookup LookupFunc) (Config, error) {
 	l := &loader{lookup: lookup}
+	d := Default()
 
+	// Step 1: parse. Each setting falls back to its default when missing or
+	// when it can't be parsed (the parse error is recorded either way).
 	cfg := Config{
-		AppName: l.str("APP_NAME", "omolar"),
-		Env:     l.oneOf("APP_ENV", "development", "development", "test", "production"),
-		Debug:   l.bool("DEBUG", false),
+		AppName: l.str("APP_NAME", d.AppName),
+		Env:     l.lower("APP_ENV", d.Env),
+		Debug:   l.bool("DEBUG", d.Debug),
 
-		Host: l.str("HOST", ""),
-		Port: l.int("PORT", 4000),
+		Host: l.str("HOST", d.Host),
+		Port: l.int("PORT", d.Port),
 
-		ReadTimeout:     l.duration("READ_TIMEOUT", 15*time.Second),
-		WriteTimeout:    l.duration("WRITE_TIMEOUT", 30*time.Second),
-		IdleTimeout:     l.duration("IDLE_TIMEOUT", 60*time.Second),
-		ShutdownTimeout: l.duration("SHUTDOWN_TIMEOUT", 10*time.Second),
+		ReadTimeout:     l.duration("READ_TIMEOUT", d.ReadTimeout),
+		WriteTimeout:    l.duration("WRITE_TIMEOUT", d.WriteTimeout),
+		IdleTimeout:     l.duration("IDLE_TIMEOUT", d.IdleTimeout),
+		ShutdownTimeout: l.duration("SHUTDOWN_TIMEOUT", d.ShutdownTimeout),
 
-		LogLevel:  l.oneOf("LOG_LEVEL", "info", "debug", "info", "warn", "error"),
-		LogFormat: l.oneOf("LOG_FORMAT", "text", "text", "json"),
+		LogLevel:  l.lower("LOG_LEVEL", d.LogLevel),
+		LogFormat: l.lower("LOG_FORMAT", d.LogFormat),
 	}
 
-	// Rules that involve the meaning of a value, not just its format.
-	if cfg.Port < 1 || cfg.Port > 65535 {
-		l.fail("PORT", "must be between 1 and 65535, got %d", cfg.Port)
+	// Step 2: validate. The same rules as for a Config built in code, so
+	// there's exactly one place that defines what "valid" means.
+	errs := l.errs
+	if err := cfg.Validate(); err != nil {
+		errs = append(errs, err)
 	}
-	if !validAppName(cfg.AppName) {
-		l.fail("APP_NAME", "use only letters, digits, '-' and '_', got %q", cfg.AppName)
-	}
-	if cfg.Env == "production" && cfg.Debug {
-		// Security: debug mode can expose stack traces and internal details.
-		l.fail("DEBUG", "must be false when APP_ENV=production")
-	}
-
-	if len(l.errs) > 0 {
-		// GO CONCEPT: errors.Join (Go 1.20+) bundles several errors into one.
-		// Its message is each error on its own line.
-		return Config{}, errors.Join(l.errs...)
+	if len(errs) > 0 {
+		return Config{}, errors.Join(errs...)
 	}
 	return cfg, nil
 }
@@ -233,27 +305,16 @@ func (l *loader) duration(key string, def time.Duration) time.Duration {
 		l.fail(key, "must be a duration like 15s or 2m, got %q", v)
 		return def
 	}
-	if d <= 0 {
-		l.fail(key, "must be greater than zero, got %s", d)
-		return def
-	}
-	return d
+	return d // whether it's > 0 is checked by Validate
 }
 
-// oneOf reads a value that must be one of the allowed options (case-insensitive).
-func (l *loader) oneOf(key, def string, allowed ...string) string {
-	v, ok := l.get(key)
-	if !ok {
-		return def
+// lower reads a choice-type value (like LOG_LEVEL) and lower-cases it, so
+// "WARN" and "warn" both work. Whether it's an allowed choice is up to Validate.
+func (l *loader) lower(key, def string) string {
+	if v, ok := l.get(key); ok {
+		return strings.ToLower(v)
 	}
-	v = strings.ToLower(v)
-	// slices.Contains (Go 1.21+) is a generic helper: it works on a slice of
-	// any comparable type.
-	if !slices.Contains(allowed, v) {
-		l.fail(key, "must be one of %s, got %q", strings.Join(allowed, ", "), v)
-		return def
-	}
-	return v
+	return def
 }
 
 // validAppName allows letters, digits, '-' and '_'. The name ends up in
@@ -264,6 +325,25 @@ func validAppName(name string) bool {
 	}
 	for _, r := range name {
 		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_'
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// validHost accepts "", an IP address (v4 or v6), or a hostname made of
+// letters, digits, '-' and '.'. A host with a port ("localhost:80") is
+// rejected, because the port belongs in PORT.
+func validHost(h string) bool {
+	if h == "" || net.ParseIP(h) != nil {
+		return true
+	}
+	if len(h) > 253 {
+		return false
+	}
+	for _, r := range h {
+		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '.'
 		if !ok {
 			return false
 		}
