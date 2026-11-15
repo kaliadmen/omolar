@@ -79,6 +79,6 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	app.Logger.Info("starting", "url", fmt.Sprintf("http://localhost:%d", cfg.Port))
+	app.Logger().Info("starting", "url", fmt.Sprintf("http://localhost:%d", cfg.Port))
 	return app.Run(ctx)
 }

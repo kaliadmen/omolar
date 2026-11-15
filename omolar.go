@@ -33,8 +33,10 @@ const Version = "0.1.0-dev"
 // app's main() would wire those together by hand and get the details wrong
 // differently each time (forgotten timeouts, logger not passed to the server).
 type App struct {
-	Config config.Config
-	Logger *slog.Logger
+	// These are unexported so nothing outside can change them after New has
+	// validated them. Config() and Logger() hand out read-only views.
+	cfg    config.Config
+	logger *slog.Logger
 
 	// mux routes requests to handlers. For Milestone 1 this is the standard
 	// library's http.ServeMux (which understands "GET /users/{id}" patterns
@@ -86,8 +88,8 @@ func New(cfg config.Config, opts ...Option) (*App, error) {
 	}
 
 	app := &App{
-		Config: cfg,
-		Logger: logger,
+		cfg:    cfg,
+		logger: logger,
 		mux:    http.NewServeMux(),
 	}
 
@@ -95,6 +97,16 @@ func New(cfg config.Config, opts ...Option) (*App, error) {
 	app.mux.Handle("/health", server.Health(Version))
 
 	return app, nil
+}
+
+// Config returns the app's configuration.
+func (a *App) Config() config.Config {
+	return config.Config{}
+}
+
+// Logger returns the app's structured logger.
+func (a *App) Logger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 // Handle registers a handler for a pattern such as "GET /users/{id}".
@@ -138,22 +150,22 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 func (a *App) Healthcheck(ctx context.Context) error {
 	// The app listens on all interfaces when Host is empty (the Docker
 	// default), so the probe talks to it over loopback.
-	host := a.Config.Host
+	host := a.cfg.Host
 	if host == "" || host == "0.0.0.0" || host == "::" {
 		host = "127.0.0.1"
 	}
-	addr := net.JoinHostPort(host, strconv.Itoa(a.Config.Port))
+	addr := net.JoinHostPort(host, strconv.Itoa(a.cfg.Port))
 	return server.Probe(ctx, "http://"+addr+"/health")
 }
 
 // server builds a server.Server from the app's config.
 func (a *App) server() (*server.Server, error) {
 	return server.New(a.Handler(), server.Options{
-		Addr:            a.Config.Addr(),
-		ReadTimeout:     a.Config.ReadTimeout,
-		WriteTimeout:    a.Config.WriteTimeout,
-		IdleTimeout:     a.Config.IdleTimeout,
-		ShutdownTimeout: a.Config.ShutdownTimeout,
-		Logger:          a.Logger,
+		Addr:            a.cfg.Addr(),
+		ReadTimeout:     a.cfg.ReadTimeout,
+		WriteTimeout:    a.cfg.WriteTimeout,
+		IdleTimeout:     a.cfg.IdleTimeout,
+		ShutdownTimeout: a.cfg.ShutdownTimeout,
+		Logger:          a.logger,
 	})
 }
