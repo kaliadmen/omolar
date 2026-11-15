@@ -11,12 +11,12 @@ package omolar
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/kaliadmen/omolar/config"
 	"github.com/kaliadmen/omolar/logging"
@@ -119,7 +119,14 @@ func (a *App) Serve(ctx context.Context, ln net.Listener) error {
 // Healthcheck probes this app's own /health endpoint on the configured port.
 // Used by `<binary> healthcheck` inside Docker; see examples/hello.
 func (a *App) Healthcheck(ctx context.Context) error {
-	return errors.New("not implemented")
+	// The app listens on all interfaces when Host is empty (the Docker
+	// default), so the probe talks to it over loopback.
+	host := a.Config.Host
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	addr := net.JoinHostPort(host, strconv.Itoa(a.Config.Port))
+	return server.Probe(ctx, "http://"+addr+"/health")
 }
 
 // server builds a server.Server from the app's config.

@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/kaliadmen/omolar"
 	"github.com/kaliadmen/omolar/config"
@@ -42,6 +43,19 @@ func run() error {
 	app, err := omolar.New(cfg)
 	if err != nil {
 		return err
+	}
+
+	// `hello healthcheck` asks an already-running copy of this app whether
+	// it's healthy, then exits 0 (yes) or 1 (no). Docker's HEALTHCHECK runs
+	// this inside the container, because the distroless image has no curl.
+	//
+	// TRY: start the app in one terminal, then run
+	//   go run ./examples/hello healthcheck; echo $?
+	// Stop the app and run it again. Compare the exit codes.
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		return app.Healthcheck(ctx)
 	}
 
 	// "{$}" means "exactly /", so this doesn't also catch /anything-else.
