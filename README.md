@@ -34,7 +34,7 @@ A minimal app:
 
 ```go
 cfg, err := config.Load(".env")   // .env is optional; env vars override it
-if err != nil { log.Fatal(err) }
+if err != nil { log.Fatal(err) }  // or build one in code: cfg := config.Default()
 
 app, err := omolar.New(cfg)
 if err != nil { log.Fatal(err) }
@@ -53,6 +53,11 @@ app.Run(ctx) // returns when Ctrl+C is pressed, after in-flight requests finish
 Settings come from environment variables, optionally loaded from a `.env` file. See
 [`.env.example`](.env.example) for every option. Invalid values stop the app at startup
 with a list of every problem, not just the first.
+
+You can also build a config in code, starting from `config.Default()`. `omolar.New`
+validates it with the same rules, so a hand-built config can't skip them (zero or
+negative timeouts, port 0, `DEBUG` in production...). After `New`, the app's settings
+are fixed: `app.Config()` returns a copy.
 
 ## Packages
 
@@ -94,7 +99,7 @@ commit (code that makes them pass). Learning notes for each milestone are in
 - [x] **M1** Config, logging, server, graceful shutdown, test reports, Docker
 - [ ] **M2** Radix-tree router with path parameters
 - [ ] **M3** Middleware: panic recovery, request IDs, request logging, security headers
-- [ ] **M4** Templates and static files
+- [ ] **M4** Templates and static files (plus a dev-only page that serves `coverage.html`)
 - [ ] **M5** Database layer and migrations
 - [ ] **M6** Sessions, CSRF, authentication
 - [ ] **M7** Cache (LRU + Redis) and rate limiting
