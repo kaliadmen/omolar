@@ -127,10 +127,17 @@ func decodeSegment(raw string) (seg, reason string) {
 		}
 	}
 	for i := 0; i < len(seg); i++ {
-		// NUL truncates strings in C code; CR/LF can forge log lines or
-		// headers; the rest have no business in a URL.
-		if c := seg[i]; c < 0x20 || c == 0x7f {
+		switch c := seg[i]; {
+		case c < 0x20 || c == 0x7f:
+			// NUL truncates strings in C code; CR/LF can forge log lines or
+			// headers; the rest have no business in a URL.
 			return "", "control character in a path segment"
+		case c == '\\':
+			// Omolar policy: browsers and Windows treat "\" as "/", so it has
+			// no legitimate use in a route and is a common disguise. Raw or
+			// encoded (%5C), it's refused. Defence in depth only: this does
+			// not make file access safe (design §6.8).
+			return "", "backslash in a path segment"
 		}
 	}
 	// One valid byte sequence per character: no overlong forms like %C0%AF
