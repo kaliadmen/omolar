@@ -35,7 +35,6 @@ func TestNormalize_OK(t *testing.T) {
 		{"/%41/b/", []string{"A", "b", ""}},
 		{"/%F0%9F%98%80", []string{"😀"}},
 		{"/a%2Cb", []string{"a,b"}},
-		{"/files/a%5Cb", []string{"files", `a\b`}}, // backslash is just a character to the router (§6.8)
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -79,6 +78,16 @@ func TestNormalize_RejectsUnsafeSegments(t *testing.T) {
 		{"/%C0%AF", "UTF-8"},
 		{"/%ED%A0%80", "UTF-8"}, // a UTF-16 surrogate: not valid UTF-8
 		{"/a\xffb", "UTF-8"},
+		// Backslashes, raw or encoded: an intentionally strict Omolar policy
+		// (review decision). Browsers and Windows treat "\" as "/", so it has
+		// no legitimate use in a route. This is defence in depth only; file
+		// access still has to be safe on its own (§6.8).
+		{"/files/a%5Cb", "backslash"},
+		{"/files/a%5cb", "backslash"},
+		{"/%5C", "backslash"},
+		{`/files/a\b`, "backslash"},
+		{`/\evil.com`, "backslash"},
+		{`/a/..\..\etc`, "backslash"},
 		// Malformed percent-encoding.
 		{"/%zz", "escape"},
 		{"/%", "escape"},
@@ -186,7 +195,7 @@ func TestNormalize_Canonicalization(t *testing.T) {
 func TestNormalize_ValidationBeforeCanonicalization(t *testing.T) {
 	// A path that is both non-canonical and unsafe is refused (400), not
 	// redirected to a "cleaned" version that would only be refused next.
-	for _, in := range []string{"/a//b%2F", "/a/../%2e%2e", "/./%00", "//%FF"} {
+	for _, in := range []string{"/a//b%2F", "/a/../%2e%2e", "/./%00", "//%FF", `/a/..\x`, "//%5Cevil.com"} {
 		if got := normalize(in); got.status != pathBad {
 			t.Errorf("normalize(%q) = %v, want bad", in, got.status)
 		}
@@ -293,7 +302,7 @@ func FuzzNormalize(f *testing.F) {
 				t.Fatalf("%q: %d segments", in, len(got.segs))
 			}
 			for i, s := range got.segs {
-				if strings.Contains(s, "/") || s == "." || s == ".." || !utf8.ValidString(s) {
+				if strings.ContainsAny(s, `/\`) || s == "." || s == ".." || !utf8.ValidString(s) {
 					t.Fatalf("%q: unsafe segment %d %q accepted", in, i, s)
 				}
 				if s == "" && i != len(got.segs)-1 {
