@@ -40,6 +40,7 @@ type normalizedPath struct {
 	status    pathStatus
 	segs      []string // decoded segments, valid only when status == pathOK
 	canonical string   // the cleaned escaped path, set when status == pathNotCanonical
+	decoded   bool     // some segment contained a %-escape, so segs aren't substrings of the path
 	reason    string   // why a path was refused, for logs and tests
 }
 
@@ -72,6 +73,7 @@ func normalizePath(escaped string, lim limits, buf []string) normalizedPath {
 
 	segs := buf[:0]
 	canonical := true
+	decoded := false
 	start := 1 // the current segment begins just after a "/"
 	for {
 		end := len(escaped)
@@ -92,6 +94,9 @@ func normalizePath(escaped string, lim limits, buf []string) normalizedPath {
 			return bad(reason)
 		}
 		segs = append(segs, seg)
+		if len(seg) != len(raw) {
+			decoded = true // decoding always shortens a segment ("%41" -> "A")
+		}
 
 		if last {
 			break
@@ -102,7 +107,7 @@ func normalizePath(escaped string, lim limits, buf []string) normalizedPath {
 	if !canonical {
 		return normalizedPath{status: pathNotCanonical, canonical: cleanPath(escaped)}
 	}
-	return normalizedPath{status: pathOK, segs: segs}
+	return normalizedPath{status: pathOK, segs: segs, decoded: decoded}
 }
 
 // decodeSegment percent-decodes one escaped segment and checks the result.
