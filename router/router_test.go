@@ -4,9 +4,8 @@ package router
 // Test levels (design §11.0): most tests call ServeHTTP directly (L2); the
 // last ones go through a real server (L3) and raw TCP (L4).
 //
-// Not here on purpose: 405 and the Allow header (step 8, Quinze's task 2) and
-// trailing-slash redirects (step 9, Quinze's task 3). Requests that match a
-// path but not its method aren't tested yet.
+// 405 and the Allow header are tested in method_test.go (step 8).
+// Trailing-slash redirects are step 9 (Quinze's task 3).
 
 import (
 	"bufio"

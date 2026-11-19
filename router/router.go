@@ -24,8 +24,9 @@ type Router struct {
 	tree   routetree.Tree[http.Handler]
 	routes []Route // snapshot taken by Freeze; nil until then
 
-	notFound http.Handler
-	limits   limits
+	notFound         http.Handler
+	methodNotAllowed http.Handler
+	limits           limits
 }
 
 // Route describes one registered route.
@@ -46,8 +47,9 @@ type Param struct{ Name, Value string }
 // New creates an empty router.
 func New(opts ...Option) *Router {
 	rt := &Router{
-		notFound: http.NotFoundHandler(),
-		limits:   limits{maxPathLength: defaultMaxPathLength, maxSegments: defaultMaxSegments},
+		notFound:         http.NotFoundHandler(),
+		methodNotAllowed: http.HandlerFunc(defaultMethodNotAllowed),
+		limits:           limits{maxPathLength: defaultMaxPathLength, maxSegments: defaultMaxSegments},
 	}
 	for _, opt := range opts {
 		opt(rt)
@@ -189,8 +191,17 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var paramBuf [8]string
 	res, ok := rt.tree.Match(r.Method, np.segs, paramBuf[:0])
 	if !ok {
-		// Step 8 adds 405 Method Not Allowed here, when the path matches a
-		// route for another method. Step 9 adds trailing-slash redirects.
+		// No route for this method. If routes exist for this exact path with
+		// other methods, it's a 405; otherwise a 404. Allowed is a second walk
+		// of the tree, done only now: the successful path never pays for it.
+		// (Step 9 adds trailing-slash redirects before the 404.)
+		if allowed := rt.tree.Allowed(np.segs); len(allowed) > 0 {
+			// The methods come from registered patterns, never from the
+			// request, so nothing the client sent ends up in this header.
+			w.Header().Set("Allow", allowHeader(allowed))
+			rt.methodNotAllowed.ServeHTTP(w, r)
+			return
+		}
 		rt.notFound.ServeHTTP(w, r)
 		return
 	}
@@ -223,4 +234,10 @@ func restValue(escaped string, np normalizedPath, rest []string) string {
 		return escaped[len(escaped)-n:]
 	}
 	return strings.Join(rest, "/")
+}
+
+// defaultMethodNotAllowed is the 405 response used unless WithMethodNotAllowed
+// replaces it. ServeHTTP has already set the Allow header.
+func defaultMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 }
