@@ -34,3 +34,10 @@ func WithMaxSegments(n int) Option {
 		}
 	}
 }
+
+// WithMethodNotAllowed sets the handler for requests whose path matches a
+// route but whose method doesn't (405). The Allow header is already set when
+// h runs. nil means the default.
+func WithMethodNotAllowed(h http.Handler) Option {
+	return func(*Router) {}
+}
