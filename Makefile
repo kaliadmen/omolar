@@ -6,8 +6,8 @@
 #   test, report, ...    run with a local Go install (used inside the dev
 #                        container and by CI)
 
-.PHONY: help test report cover vet fmt run-hello \
-        docker-test docker-report docker-cover docker-vet docker-fmt \
+.PHONY: help test race report cover vet fmt run-hello \
+        docker-test docker-race docker-report docker-cover docker-vet docker-fmt \
         docker-shell docker-dev-run docker-build up down
 
 DC  := docker compose
@@ -34,6 +34,10 @@ help:
 ## docker-test: run every test inside the dev container
 docker-test:
 	$(DEV) make test
+
+## docker-race: run race tests inside the dev container
+docker-race:
+	$(DEV) make race
 
 ## docker-report: run tests in Docker and write test-report.json here (share it with Claude)
 docker-report:
@@ -77,6 +81,10 @@ down:
 ## test: run every test with the race detector (catches unsafe concurrent access)
 test:
 	go test -race ./...
+
+## race: run every test with the race detector, repeating tests 3 times
+race:
+	go test -race -count=3 ./...
 
 ## report: run every test and write test-report.json
 report:
